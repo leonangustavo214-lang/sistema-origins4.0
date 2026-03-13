@@ -1,0 +1,444 @@
+<!DOCTYPE html><html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SISTEMA ORIGINS 4.0</title>
+<style>
+:root{
+--bg:#060606;
+--card:#141414;
+--primary:#8e2de2;
+--gold:#f1c40f;
+--success:#2ecc71;
+--danger:#ff4d4d;
+--text:#ffffff;
+}body{ background:var(--bg); color:var(--text); font-family:Segoe UI; margin:0; padding:15px; display:flex; flex-direction:column; align-items:center; }
+
+.header{ text-align:center; border-bottom:2px solid var(--primary); margin-bottom:15px; width:100%; max-width:540px }
+
+.card{ background:var(--card); border:1px solid #333; padding:15px; border-radius:12px; width:100%; max-width:540px; margin-bottom:12px; }
+
+.tabs{display:flex;width:100%;max-width:540px;margin-bottom:10px} .tab{flex:1;padding:10px;border:none;background:#333;color:white} .active{background:var(--primary)}
+
+label{color:var(--gold);font-size:12px}
+
+input,textarea{ width:100%; background:#222; border:1px solid #444; color:white; padding:10px; border-radius:6px; margin-top:6px }
+
+.bar{height:12px;background:#333;border-radius:6px;overflow:hidden;margin:8px 0} .fill{height:100%;transition:.4s} .xp{background:var(--primary)} .testo{background:#e74c3c}
+
+.row{display:flex;justify-content:space-between;align-items:center}
+
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.stat{background:#1a1a1a;padding:8px;border-radius:6px}
+
+.btn{border:none;padding:6px 12px;border-radius:6px;font-weight:bold;cursor:pointer} .up{background:var(--success)} .down{background:var(--danger)}
+
+.habit{display:flex;justify-content:space-between;background:#1a1a1a;padding:8px;border-radius:6px;margin-top:6px}
+
+.achievement{background:#1a0033;padding:8px;border-radius:6px;margin-top:6px}
+
+.mission{background:#1a0033;border:1px dashed var(--primary);padding:10px;border-radius:8px;margin-top:10px}
+
+.timer{ font-size:32px; text-align:center; margin:10px 0 }
+
+.save{width:100%;padding:12px;background:var(--primary);border:none;border-radius:8px;font-weight:bold}
+
+</style>
+</head>
+<body><div class="header">
+<h2 id="nameDisp">PERSONAGEM</h2>
+<div>LVL <span id="lvlDisp">1</span></div>
+<div>🔥 Streak: <span id="streakDisp">0</span> dias</div>
+<div>🧬 Retenção: <span id="nofapDisp">0</span> dias</div>
+</div><div class="tabs">
+<button class="tab active" onclick="tab('status',this)">Status</button>
+<button class="tab" onclick="tab('habits',this)">Hábitos</button>
+<button class="tab" onclick="tab('missions',this)">Missões</button>
+<button class="tab" onclick="tab('focus',this)">Foco</button>
+<button class="tab" onclick="tab('achievements',this)">Conquistas</button>
+<button class="tab" onclick="tab('bg',this)">Background</button>
+</div><div id="status" class="card"><label>Nome</label> <input id="name">
+
+<label>Classe</label> <input id="class">
+
+<label>XP</label>
+
+<div class="bar"><div id="xpBar" class="fill xp"></div></div>
+<div class="row">
+<div><span id="xpVal">0</span>/100</div>
+<div>
+<button class="btn down" onclick="xp(-5)">-</button>
+<button class="btn up" onclick="xp(5)">+</button>
+</div>
+</div><label>Testosterona</label>
+
+<div class="bar"><div id="testoBar" class="fill testo"></div></div>
+<div class="row">
+<span id="testoVal">0</span>
+<div>
+<button class="btn down" onclick="stat('TESTO',-0.5)">-</button>
+<button class="btn up" onclick="stat('TESTO',0.5)">+</button>
+</div>
+</div><label>Atributos</label>
+
+<div id="stats" class="grid"></div></div><div id="habits" class="card" style="display:none">
+<label>Novo hábito</label>
+<input id="habitInput">
+<button class="btn up" onclick="addHabit()">Adicionar</button>
+<div id="habitList"></div>
+</div><div id="missions" class="card" style="display:none">
+<div class="mission">
+<b>Missões Diárias</b>
+<div id="missionList"></div>
+</div>
+</div><div id="focus" class="card" style="display:none">
+<b>Modo Foco (25min)</b>
+<div class="timer" id="timer">25:00</div>
+<div class="row">
+<button class="btn up" onclick="startTimer()">Iniciar</button>
+<button class="btn down" onclick="resetTimer()">Reset</button>
+</div>
+</div><div id="achievements" class="card" style="display:none">
+<b>Conquistas</b>
+<div id="achList"></div>
+</div><div id="bg" class="card" style="display:none">
+<label>História do Personagem</label>
+<textarea id="bgInput" rows="6"></textarea>
+</div><button class="save" onclick="save()">SALVAR PROGRESSO</button>
+
+<script>
+
+let p={
+name:'',
+class:'',
+lvl:1,
+xp:0,
+streak:0,
+nofap:0,
+bg:'',
+stats:{QI:0,FOR:0,DIS:0,FOC:0,AUT:0,BEL:0,FE:0,COM:0,CRI:0,TESTO:0},
+habits:[],
+achievements:[],
+lastLogin:null
+}
+
+let timerInterval
+let time=1500
+
+function init(){
+
+let grid=document.getElementById('stats')
+
+Object.keys(p.stats).forEach(s=>{
+if(s==='TESTO')return
+
+let div=document.createElement('div')
+
+div.className='stat'
+
+div.innerHTML=`
+<div class='row'>
+<span>${s}</span>
+<span id='${s}'>0</span>
+</div>
+<div class='row'>
+<button class='btn down' onclick="stat('${s}',-1)">-</button>
+<button class='btn up' onclick="stat('${s}',1)">+</button>
+</div>`
+
+grid.appendChild(div)
+
+})
+
+load()
+updateDaily()
+render()
+
+}
+
+function updateDaily(){
+
+let today=new Date().toDateString()
+
+if(p.lastLogin!==today){
+
+p.streak++
+p.nofap++
+
+p.habits.forEach(h=>h.done=false)
+
+p.lastLogin=today
+
+}
+
+}
+
+function stat(s,v){
+
+p.stats[s]=Math.max(0,parseFloat((p.stats[s]+v).toFixed(1)))
+
+render()
+
+}
+
+function xp(v){
+
+p.xp+=v
+
+if(p.xp>=100){
+
+p.xp=0
+p.lvl++
+unlockAchievement("LEVEL UP")
+
+}
+
+if(p.xp<0)p.xp=0
+
+render()
+
+}
+
+function addHabit(){
+
+let h=habitInput.value
+
+if(!h)return
+
+p.habits.push({name:h,done:false})
+
+habitInput.value=''
+
+renderHabits()
+
+}
+
+function toggleHabit(i){
+
+p.habits[i].done=!p.habits[i].done
+
+if(p.habits[i].done){
+
+xp(10)
+
+checkAchievements()
+
+}
+
+renderHabits()
+
+}
+
+function renderHabits(){
+
+let list=document.getElementById('habitList')
+
+list.innerHTML=''
+
+p.habits.forEach((h,i)=>{
+
+let div=document.createElement('div')
+
+div.className='habit'
+
+div.innerHTML=`
+<span>${h.name}</span>
+<button class='btn ${h.done?'down':'up'}' onclick='toggleHabit(${i})'>${h.done?'Feito':'Completar'}</button>`
+
+list.appendChild(div)
+
+})
+
+}
+
+function generateMissions(){
+
+let m=[]
+
+m.push("Treino físico +1 FOR")
+
+m.push("10 min meditação +1 FOC")
+
+m.push("Tomar 2L água +1 DIS")
+
+m.push("Dormir antes das 23h +1 TESTO")
+
+missionList.innerHTML=m.join('<br>')
+
+}
+
+function unlockAchievement(name){
+
+if(p.achievements.includes(name))return
+
+p.achievements.push(name)
+
+renderAchievements()
+
+}
+
+function checkAchievements(){
+
+if(p.habits.length>=3)unlockAchievement("3 HÁBITOS CRIADOS")
+
+if(p.lvl>=5)unlockAchievement("GUERREIRO DISCIPLINADO")
+
+if(p.streak>=7)unlockAchievement("7 DIAS DE DISCIPLINA")
+
+}
+
+function renderAchievements(){
+
+let list=document.getElementById('achList')
+
+list.innerHTML=''
+
+p.achievements.forEach(a=>{
+
+let div=document.createElement('div')
+
+div.className='achievement'
+
+div.innerText=a
+
+list.appendChild(div)
+
+})
+
+}
+
+function startTimer(){
+
+clearInterval(timerInterval)
+
+timerInterval=setInterval(()=>{
+
+time--
+
+let m=Math.floor(time/60)
+
+let s=time%60
+
+if(s<10)s='0'+s
+
+
+timer.innerText=m+":"+s
+
+if(time<=0){
+
+clearInterval(timerInterval)
+
+xp(20)
+
+unlockAchievement("SESSÃO DE FOCO")
+
+}
+
+},1000)
+
+}
+
+function resetTimer(){
+
+clearInterval(timerInterval)
+
+time=1500
+
+timer.innerText="25:00"
+
+}
+
+function render(){
+
+nameDisp.innerText=name.value||"PERSONAGEM"
+
+lvlDisp.innerText=p.lvl
+
+streakDisp.innerText=p.streak
+
+nofapDisp.innerText=p.nofap
+
+xpVal.innerText=p.xp
+
+xpBar.style.width=(p.xp/100*100)+'%'
+
+
+testoVal.innerText=p.stats.TESTO
+
+testoBar.style.width=(p.stats.TESTO*10)+'%'
+
+Object.keys(p.stats).forEach(s=>{
+
+let el=document.getElementById(s)
+
+if(el)el.innerText=p.stats[s]
+
+})
+
+renderHabits()
+
+renderAchievements()
+
+}
+
+function tab(id,btn){
+
+status.style.display='none'
+
+habits.style.display='none'
+
+missions.style.display='none'
+
+focus.style.display='none'
+
+achievements.style.display='none'
+
+bg.style.display='none'
+
+
+document.getElementById(id).style.display='block'
+
+
+document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'))
+
+btn.classList.add('active')
+
+}
+
+function save(){
+
+p.name=name.value
+
+p.class=class.value
+
+p.bg=bgInput.value
+
+localStorage.setItem('origins4',JSON.stringify(p))
+
+alert("Progresso salvo no sistema")
+
+}
+
+function load(){
+
+let d=localStorage.getItem('origins4')
+
+if(d)p=JSON.parse(d)
+
+name.value=p.name
+
+class.value=p.class
+
+bgInput.value=p.bg
+
+}
+
+bgInput.addEventListener('input',generateMissions)
+
+init()
+
+generateMissions()
+
+</script></body>
+</html>
